@@ -1,3 +1,6 @@
+#Next step is to make a shader class, but vispy already provides wrapper for OpenGL functions
+#so there is no need for it.
+
 #https://learnopengl.com/Getting-started/Shaders
 
 import numpy as np
