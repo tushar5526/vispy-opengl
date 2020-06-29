@@ -1,10 +1,11 @@
 # https://learnopengl.com/Getting-started/Textures
 
+import builtins
 import numpy as np
 from vispy import app, gloo, io
 from vispy.gloo import Texture2D
 from time import time
-from math import sin
+
 #python wrapper of glm
 #https://pypi.org/project/PyGLM/
 import glm
@@ -15,13 +16,16 @@ vertex = """
 
 attribute vec2 a_position;
 attribute vec2 aTexCoord;
-uniform mat4 transform;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
 
 varying vec2 TexCoord;
 varying vec3 ourColor;
 void main (void)
 {
-    gl_Position = transform * vec4(a_position, 0.0, 1.0);
+    gl_Position = projection * view * model * vec4(a_position, 0.0, 1.0);
     TexCoord = aTexCoord;
 }
 """
@@ -41,10 +45,13 @@ void main()
 
 
 class Canvas(app.Canvas):
-    def __init__(self):
+    def __init__(self,size):
         app.Canvas.__init__(self,
                             title='Hello OpenGL',
-                            keys='interactive')
+                            keys='interactive',
+                            size=size)
+
+        builtins.width, builtins.height = size
 
         self.startTime = time()
         self.program = gloo.Program(vertex, fragment)
@@ -60,8 +67,9 @@ class Canvas(app.Canvas):
         self.texture1 = Texture2D(data=io.imread('../Textures/container.jpg',flipVertically=True))
         self.texture2 = Texture2D(data=io.imread('../Textures/smiley.jpg',flipVertically=True))
 
-        self.trans1 = None
-        self.trans2 = None
+        self.model = None
+        self.view = None
+        self.projection = None
 
         self.program['a_position'] = self.vertices
         self.program['aTexCoord'] = self.texCoord
@@ -74,42 +82,39 @@ class Canvas(app.Canvas):
         self.show()
 
     def on_draw(self, event):
-        gloo.clear([0, 0, 0, 0])
 
-        #1st box
-        # Here _trans stores matrix in numpy format and trans stores data in glm format
-        self.trans1 = glm.mat4(1.0)
+        self.model = glm.mat4(1.0)
+        self.model = glm.rotate(self.model, glm.radians(-55.0), glm.vec3(1, 0, 0))
 
-        self.trans1 = glm.translate(self.trans1, glm.vec3(0.5, -0.5, 0.0))
-        self.trans1 = glm.rotate(self.trans1, time() - self.startTime, glm.vec3(0.0, 0.0, 1.0))
+        self.view = glm.mat4(1.0)
+        self.view = glm.translate(self.view, glm.vec3(0.0, 0.0, -3.0))
+
+        self.projection = glm.mat4(1.0)
+        self.projection = glm.perspective(glm.radians(45.0), builtins.width/builtins.height, 0.1, 100.0)
 
         # vispy takes numpy array in m * n matrix form
-        self.trans1 = (np.array(self.trans1.to_list()).astype(np.float32))
+        self.model = (np.array(self.model.to_list()).astype(np.float32))
+        self.view = (np.array(self.view.to_list()).astype(np.float32))
+        self.projection = (np.array(self.projection.to_list()).astype(np.float32))
 
         # reshaping to (m, n) to (1, m*n) to support data input in vispy
-        self.trans1 = self.trans1.reshape((1, self.trans1.shape[0] * self.trans1.shape[1]))
+        self.model = self.model.reshape((1, self.model.shape[0] * self.model.shape[1]))
+        self.view = self.view.reshape((1, self.view.shape[0] * self.view.shape[1]))
+        self.projection = self.projection.reshape((1, self.projection.shape[0] * self.projection.shape[1]))
 
-        self.program['transform'] = self.trans1
-        self.program.draw('triangles', self.indices)
+        gloo.clear([0.2, 0.3, 0.3, 1.0])
 
+        self.program['model'] = self.model
+        self.program['view'] = self.view
+        self.program['projection'] = self.projection
 
-        #2nd box
-        self.trans2 = glm.mat4(1.0)
-        self.trans2 = glm.translate(self.trans2, glm.vec3(-0.5, 0.5, 0.0))
-        self.trans2 = glm.scale(self.trans2, glm.vec3(sin(time()), sin(time()), sin(time())))
-        # vispy takes numpy array in m * n matrix form
-        self.trans2 = (np.array(self.trans2.to_list()).astype(np.float32))
-
-        # reshaping to (m, n) to (1, m*n)
-        self.trans2 = self.trans2.reshape((1, self.trans2.shape[0] * self.trans2.shape[1]))
-
-        self.program['transform'] = self.trans2
         self.program.draw('triangles', self.indices)
 
         self.update()
 
 
     def on_resize(self, event):
+        print(*event.size)
         gloo.set_viewport(0, 0, *event.size)
 
     def on_timer(self, event):
@@ -117,5 +122,5 @@ class Canvas(app.Canvas):
 
 
 if __name__ == '__main__':
-    c = Canvas()
+    c = Canvas((800,600))
     app.run()
