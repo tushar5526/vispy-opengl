@@ -57,8 +57,8 @@ class Canvas(app.Canvas):
 
         self.indices = gloo.IndexBuffer([0, 1, 3, 1, 2, 3])
         self.texCoord = [(1, 1), (1, 0), (0, 0), (0, 1)]
-        self.texture1 = Texture2D(data=io.imread('../Textures/container.jpg',flipVertically=True))
-        self.texture2 = Texture2D(data=io.imread('../Textures/smiley.jpg',flipVertically=True))
+        self.texture1 = Texture2D(data=io.imread('../Textures/container.jpg', flipVertically=True))
+        self.texture2 = Texture2D(data=io.imread('../Textures/smiley.jpg', flipVertically=True))
 
         self.trans1 = None
         self.trans2 = None
