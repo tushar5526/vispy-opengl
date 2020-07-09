@@ -47,7 +47,7 @@ void main()
 
 
 class Canvas(app.Canvas):
-    def __init__(self,size):
+    def __init__(self, size):
         app.Canvas.__init__(self,
                             title='Hello OpenGL',
                             keys='interactive',

@@ -2,13 +2,17 @@
 
 import builtins
 import numpy as np
-from vispy import app, gloo, io
+from vispy import app, gloo, io, use
 from vispy.gloo import Texture2D
 from time import time
+from math import sin, cos
+from Getting_Started.Camera.camera import Camera, Camera_Movement
 
-# python wrapper of glm
-# https://pypi.org/project/PyGLM/
+#python wrapper of glm
+#https://pypi.org/project/PyGLM/
 import glm
+
+
 
 vertex = """
 
@@ -41,7 +45,6 @@ void main()
 }
 """
 
-
 class Canvas(app.Canvas):
     def __init__(self, size):
         app.Canvas.__init__(self,
@@ -49,63 +52,65 @@ class Canvas(app.Canvas):
                             keys='interactive',
                             size=size)
 
+        use('Glfw')
         builtins.width, builtins.height = size
 
         self.startTime = time()
-        self.cubePositions = [glm.vec3(0.0, 0.0, 0.0),
-                              glm.vec3(2.0, 5.0, -15.0),
-                              glm.vec3(-1.5, -2.2, -2.5),
-                              glm.vec3(-3.8, -2.0, -12.3),
-                              glm.vec3(2.4, -0.4, -3.5),
-                              glm.vec3(-1.7, 3.0, -7.5),
-                              glm.vec3(1.3, -2.0, -2.5),
-                              glm.vec3(1.5, 2.0, -2.5),
-                              glm.vec3(1.5, 0.2, -1.5),
-                              glm.vec3(-1.3, 1.0, -1.5)]
+        self.first_mouse = True
+        self.cubePositions = [ glm.vec3( 0.0,  0.0,  0.0),
+        glm.vec3( 2.0,  5.0, -15.0),
+        glm.vec3(-1.5, -2.2, -2.5),
+        glm.vec3(-3.8, -2.0, -12.3),
+        glm.vec3( 2.4, -0.4, -3.5),
+        glm.vec3(-1.7,  3.0, -7.5),
+        glm.vec3( 1.3, -2.0, -2.5),
+        glm.vec3( 1.5,  2.0, -2.5),
+        glm.vec3( 1.5,  0.2, -1.5),
+        glm.vec3(-1.3,  1.0, -1.5)]
 
         self.program = gloo.Program(vertex, fragment)
 
         self.vertices = np.array([[-0.5, -0.5, -0.5],
                                   [0.5, -0.5, -0.5],
-                                  [0.5, 0.5, -0.5],
-                                  [0.5, 0.5, -0.5],
-                                  [-0.5, 0.5, -0.5],
+                                  [0.5,  0.5, -0.5],
+                                  [0.5,  0.5, -0.5],
+                                  [-0.5,  0.5, -0.5],
                                   [-0.5, -0.5, -0.5],
 
-                                  [-0.5, -0.5, 0.5],
-                                  [0.5, -0.5, 0.5],
-                                  [0.5, 0.5, 0.5],
-                                  [0.5, 0.5, 0.5],
-                                  [-0.5, 0.5, 0.5],
-                                  [-0.5, -0.5, 0.5],
+                                  [-0.5, -0.5,  0.5],
+                                  [0.5, -0.5,  0.5],
+                                  [0.5,  0.5,  0.5],
+                                  [0.5,  0.5,  0.5],
+                                  [-0.5,  0.5,  0.5],
+                                  [-0.5, -0.5,  0.5],
 
-                                  [-0.5, 0.5, 0.5],
-                                  [-0.5, 0.5, -0.5],
+                                  [-0.5,  0.5,  0.5],
+                                  [-0.5,  0.5, -0.5],
                                   [-0.5, -0.5, -0.5],
                                   [-0.5, -0.5, -0.5],
-                                  [-0.5, -0.5, 0.5],
-                                  [-0.5, 0.5, 0.5],
+                                  [-0.5, -0.5,  0.5],
+                                  [-0.5,  0.5,  0.5],
 
-                                  [0.5, 0.5, 0.5],
-                                  [0.5, 0.5, -0.5],
+                                  [0.5,  0.5,  0.5],
+                                  [0.5,  0.5, -0.5],
                                   [0.5, -0.5, -0.5],
                                   [0.5, -0.5, -0.5],
-                                  [0.5, -0.5, 0.5],
-                                  [0.5, 0.5, 0.5],
+                                  [0.5, -0.5,  0.5],
+                                  [0.5,  0.5,  0.5],
 
                                   [-0.5, -0.5, -0.5],
                                   [0.5, -0.5, -0.5],
-                                  [0.5, -0.5, 0.5],
-                                  [0.5, -0.5, 0.5],
-                                  [-0.5, -0.5, 0.5],
+                                  [0.5, -0.5,  0.5],
+                                  [0.5, -0.5,  0.5],
+                                  [-0.5, -0.5,  0.5],
                                   [-0.5, -0.5, -0.5],
 
-                                  [-0.5, 0.5, -0.5],
-                                  [0.5, 0.5, -0.5],
-                                  [0.5, 0.5, 0.5],
-                                  [0.5, 0.5, 0.5],
-                                  [-0.5, 0.5, 0.5],
-                                  [-0.5, 0.5, -0.5]
+                                  [-0.5,  0.5, -0.5],
+                                  [0.5,  0.5, -0.5],
+                                  [0.5,  0.5,  0.5],
+                                  [0.5,  0.5,  0.5],
+                                  [-0.5,  0.5,  0.5],
+                                  [-0.5,  0.5, -0.5]
                                   ]).astype(np.float32)
         self.texCoord = np.array([[0.0, 0.0],
                                   [1.0, 0.0],
@@ -153,9 +158,27 @@ class Canvas(app.Canvas):
         self.texture1 = Texture2D(data=io.imread('../Textures/container.jpg', flipVertically=True))
         self.texture2 = Texture2D(data=io.imread('../Textures/smiley.jpg', flipVertically=True))
 
+        #get the camera
+        self.camera = Camera(position=glm.vec3(0, 0, 3), sensitivity=0.2)
+
         self.model = None
-        self.view = None
         self.projection = None
+        self.view = None
+        self.direction = None
+
+        #to get key pressed behaviour
+        self.bool_w = False
+        self.bool_a = False
+        self.bool_s = False
+        self.bool_d = False
+
+        #delta time
+        self.delta_time = 0
+        self.last_frame = 0
+
+        #mouse variables
+        self.last_x = None
+        self.last_y = None
 
         self.program['a_position'] = self.vertices
         self.program['aTexCoord'] = self.texCoord
@@ -165,21 +188,31 @@ class Canvas(app.Canvas):
         self.timer = app.Timer('auto', self.on_timer, start=True)
 
         gloo.set_state(depth_test=True)
+
         self.show()
 
     def on_draw(self, event):
 
-        # Read about depth testing and changing stated in vispy here http://vispy.org/gloo.html?highlight=set_state
+        #Read about depth testing and changing stated in vispy here http://vispy.org/gloo.html?highlight=set_state
         gloo.clear(color=[0.2, 0.3, 0.3, 1.0], depth=True)
 
-        self.view = glm.mat4(1.0)
-        self.view = glm.translate(self.view, glm.vec3(0.0, 0.0, -3.0))
+        #delta_time
+        self.current_frame = time()
+        self.delta_time = self.current_frame - self.last_frame
+        self.last_frame = self.current_frame
 
-        # to rotate camera along 45 degree or unit vector's direction
-        # self.view = glm.rotate(self.view, (time() - self.startTime)* glm.radians(50), glm.vec3(1, 1, 1))
+        if self.bool_a:
+            self.camera.ProcessKeyboard(Camera_Movement.LEFT, self.delta_time)
+        if self.bool_w:
+            self.camera.ProcessKeyboard(Camera_Movement.FORWARD, self.delta_time)
+        if self.bool_s:
+            self.camera.ProcessKeyboard(Camera_Movement.BACKWARD, self.delta_time)
+        if self.bool_d:
+            self.camera.ProcessKeyboard(Camera_Movement.RIGHT, self.delta_time)
 
-        self.projection = glm.mat4(1.0)
-        self.projection = glm.perspective(glm.radians(45.0), builtins.width / builtins.height, 0.1, 100.0)
+        self.view = self.camera.GetViewMatrix()
+
+        self.projection = glm.perspective(glm.radians(self.camera.Zoom), builtins.width/builtins.height, 0.1, 100.0)
 
         # vispy takes numpy array in m * n matrix form
         self.view = (np.array(self.view.to_list()).astype(np.float32))
@@ -198,18 +231,57 @@ class Canvas(app.Canvas):
             self.model = glm.translate(self.model, cubePosition)
 
             if i % 3 == 0:
-                self.model = glm.rotate(self.model, glm.radians((time() - self.startTime) * glm.radians(2000) * i / 2),
-                                        glm.vec3(1.0, 0.3, 0.5))
+                self.model = glm.rotate(self.model, glm.radians((time() - self.startTime) * glm.radians(2000) * i/2), glm.vec3(1.0, 0.3, 0.5))
 
             self.model = (np.array(self.model.to_list()).astype(np.float32))
             self.model = self.model.reshape((1, self.model.shape[0] * self.model.shape[1]))
             self.program['model'] = self.model
             self.program.draw('triangles')
             i += 1
+
         self.update()
 
+    def on_key_press(self,event):
+        if event.key == 'W':
+            self.bool_w = True
+        if event.key == 'S':
+            self.bool_s = True
+        if event.key == 'A':
+            self.bool_a = True
+        if event.key == 'D':
+            self.bool_d = True
+
+    def on_key_release(self, event):
+        if event.key == 'W':
+            self.bool_w = False
+        if event.key == 'S':
+            self.bool_s = False
+        if event.key == 'A':
+            self.bool_a = False
+        if event.key == 'D':
+            self.bool_d = False
+
+    def on_mouse_move(self, event):
+        x_pos = event.pos[0]
+        y_pos = event.pos[1]
+
+        if self.first_mouse:
+            self.first_mouse = False
+            self.last_x = x_pos
+            self.last_y = y_pos
+
+        x_offset = x_pos - self.last_x
+        y_offset = y_pos - self.last_y
+        self.last_x = x_pos
+        self.last_y = y_pos
+        self.camera.ProcessMouseMovement(x_offset, y_offset)
+
+        self.update()
+
+    def on_mouse_wheel(self, event):
+        self.camera.ProcessMouseScroll(-event.delta[1])
+
     def on_resize(self, event):
-        print(*event.size)
         gloo.set_viewport(0, 0, *event.size)
 
     def on_timer(self, event):
@@ -217,5 +289,5 @@ class Canvas(app.Canvas):
 
 
 if __name__ == '__main__':
-    c = Canvas((800, 600))
+    c = Canvas((800,600))
     app.run()
