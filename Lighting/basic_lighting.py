@@ -1,18 +1,16 @@
-# https://learnopengl.com/Getting-started/Textures
+# https://learnopengl.com/Lighting/Basic-Lighting
 
 import builtins
 import numpy as np
 from vispy import app, gloo
 from time import time
 from Getting_Started.Camera.camera import Camera, Camera_Movement
-from Getting_Started.Shaders.shader import shader
 
+from ctypes import POINTER
 #python wrapper of glm
 #https://pypi.org/project/PyGLM/
 import glm
 
-#we will be using a shader class now onwards which only stores the shaders in a variable
-'''
 vertex = """
 
 attribute vec3 a_position;
@@ -33,7 +31,11 @@ uniform vec3 lightColor;
 
 void main()
 {
-    gl_FragColor = vec4(lightColor * objectColor, 1.0);
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * lightColor;
+    
+    vec3 result = ambient * objectColor;
+    gl_FragColor = vec4(result, 1.0);
 }
 """
 lightSourceVertex =  """
@@ -55,7 +57,7 @@ void main()
     gl_FragColor = vec4(1.0);
 }
 """
-'''
+
 
 class Canvas(app.Canvas):
     def __init__(self, size):
@@ -65,22 +67,21 @@ class Canvas(app.Canvas):
                             size=size)
 
         # vispy wrapper of glfw dont have the wrapper of this function yet, I am opening a PR for this
-        # by the time we can use this to capture and hide the mouse
+        # by the time we can use this
         self._app.native.glfwSetInputMode(self.native._id, self._app.native.GLFW_CURSOR, self._app.native.GLFW_CURSOR_DISABLED)
 
         builtins.width, builtins.height = size
 
         #camera instance
         self.camera = Camera(position=glm.vec3(0, 0, 3), sensitivity=0.2)
-        self.shader = shader()
 
         self.startTime = time()
         self.first_mouse = True
         self.cubePositions = [ glm.vec3( 0.0,  0.0,  0.0),
         glm.vec3( 1.2,  1.0, 2.0)]
 
-        self.program = gloo.Program(self.shader.vertex, self.shader.fragment)
-        self.programLightSource = gloo.Program(self.shader.lightSourceVertex, self.shader.lightSourceFragment)
+        self.program = gloo.Program(vertex, fragment)
+        self.programLightSource = gloo.Program(lightSourceVertex, lightSourceFragment)
 
         self.vertices = np.array([[-0.5, -0.5, -0.5],
                                   [0.5, -0.5, -0.5],

@@ -53,7 +53,10 @@ class Canvas(app.Canvas):
                             keys='interactive',
                             size=size)
 
-        use('Glfw')
+        # vispy wrapper of glfw dont have the wrapper of this function yet, I am opening a PR for this
+        # by the time we can use this to capture and hide the mouse
+        self._app.native.glfwSetInputMode(self.native._id, self._app.native.GLFW_CURSOR, self._app.native.GLFW_CURSOR_DISABLED)
+
         builtins.width, builtins.height = size
 
         self.startTime = time()
