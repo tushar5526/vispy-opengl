@@ -41,6 +41,12 @@ class Camera:
         self.MouseSensitivity = sensitivity
         self.Zoom = zoom
 
+        #to get which key is pressed
+        self.bool_w = False
+        self.bool_a = False
+        self.bool_s = False
+        self.bool_d = False
+
         self.UpdateCameraVectors()
 
     def GetViewMatrix(self):
