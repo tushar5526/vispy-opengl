@@ -5,8 +5,8 @@ import numpy as np
 from vispy import app, gloo
 from time import time
 from Getting_Started.Camera.camera import Camera, Camera_Movement
+from math import sin
 
-from ctypes import POINTER
 #python wrapper of glm
 #https://pypi.org/project/PyGLM/
 import glm
@@ -14,6 +14,10 @@ import glm
 vertex = """
 
 attribute vec3 a_position;
+attribute vec3 aNormal;
+
+varying vec3 Normal;
+varying vec3 FragPos;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -22,22 +26,42 @@ uniform mat4 projection;
 void main (void)
 {
     gl_Position = projection * view * model * vec4(a_position, 1.0);
+    Normal = aNormal;
+    FragPos = vec3(model * vec4(a_position, 1.0));
 }
 """
 fragment = """
 
+uniform vec3 lightPos;
 uniform vec3 objectColor;
 uniform vec3 lightColor;
+uniform vec3 viewPos;
+
+varying vec3 FragPos;
+varying vec3 Normal;
 
 void main()
 {
     float ambientStrength = 0.1;
     vec3 ambient = ambientStrength * lightColor;
     
-    vec3 result = ambient * objectColor;
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * lightColor;
+    
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 256);
+    vec3 specular = specularStrength * spec * lightColor;
+    
+    vec3 result = (ambient + diffuse + specular) * objectColor;
     gl_FragColor = vec4(result, 1.0);
 }
 """
+
 lightSourceVertex =  """
 
 attribute vec3 a_position;
@@ -77,8 +101,7 @@ class Canvas(app.Canvas):
 
         self.startTime = time()
         self.first_mouse = True
-        self.cubePositions = [ glm.vec3( 0.0,  0.0,  0.0),
-        glm.vec3( 1.2,  1.0, 2.0)]
+        self.lightPos = [0, 0, 0]
 
         self.program = gloo.Program(vertex, fragment)
         self.programLightSource = gloo.Program(lightSourceVertex, lightSourceFragment)
@@ -125,6 +148,44 @@ class Canvas(app.Canvas):
                                   [-0.5,  0.5,  0.5],
                                   [-0.5,  0.5, -0.5]
                                   ]).astype(np.float32)
+        self.aNormal = np.array([
+            [0, 0, -1],
+            [0, 0, -1],
+            [0, 0, -1],
+            [0, 0, -1],
+            [0, 0, -1],
+            [0, 0, -1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [-1, 0, 0],
+            [-1, 0, 0],
+            [-1, 0, 0],
+            [-1, 0, 0],
+            [-1, 0, 0],
+            [-1, 0, 0],
+            [1, 0, 0],
+            [1, 0, 0],
+            [1, 0, 0],
+            [1, 0, 0],
+            [1, 0, 0],
+            [1, 0, 0],
+            [0, -1, 0],
+            [0, -1, 0],
+            [0, -1, 0],
+            [0, -1, 0],
+            [0, -1, 0],
+            [0, -1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+        ]).astype(np.float32)
 
         """self.texCoord = np.array([[0.0, 0.0],
                                   [1.0, 0.0],
@@ -206,7 +267,6 @@ class Canvas(app.Canvas):
             self.camera.ProcessKeyboard(Camera_Movement.RIGHT, self.delta_time)
 
         self.view = self.camera.GetViewMatrix()
-
         self.projection = glm.perspective(glm.radians(self.camera.Zoom), builtins.width/builtins.height, 0.1, 100.0)
 
         # vispy takes numpy array in m * n matrix form
@@ -218,10 +278,11 @@ class Canvas(app.Canvas):
         self.projection = self.projection.reshape((1, self.projection.shape[0] * self.projection.shape[1]))
 
         self.model = glm.mat4(1.0)
-        self.model = glm.translate(self.model, self.cubePositions[1])
+        self.model = glm.translate(self.model, self.lightPos)
         self.model = (np.array(self.model.to_list()).astype(np.float32))
         self.model = self.model.reshape((1, self.model.shape[0] * self.model.shape[1]))
 
+        #drawing light source
         self.programLightSource['model'] = self.model
         self.programLightSource['view'] = self.view
         self.programLightSource['projection'] = self.projection
@@ -229,16 +290,20 @@ class Canvas(app.Canvas):
 
         self.programLightSource.draw('triangles')
 
-        # drawing second cube
+        # drawing normal cube
         self.program['view'] = self.view
         self.program['projection'] = self.projection
-        self.program['a_position'] = self.vertices
-
+        self.program['a_position'] = self.vertices * 5
+        self.program['aNormal'] = self.aNormal
+        self.program['viewPos'] = self.camera.Position
+        self.program['lightPos'] = self.lightPos
         self.program['objectColor'] = [1, 0.5, 0.31]
         self.program['lightColor'] = [1, 1, 1]
 
         self.model = glm.mat4(1.0)
-        self.model = glm.translate(self.model, self.cubePositions[0])
+        # rotate the cube if you want
+        #self.model = glm.rotate(self.model, glm.radians((time() - self.startTime) * 10), glm.vec3(0,1.5,1))
+        self.model = glm.translate(self.model, glm.vec3(0,-5,0))
         self.model = (np.array(self.model.to_list()).astype(np.float32))
         self.model = self.model.reshape((1, self.model.shape[0] * self.model.shape[1]))
 
