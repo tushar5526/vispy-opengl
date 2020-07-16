@@ -5,10 +5,11 @@ import numpy as np
 from vispy import app, gloo
 from time import time
 from Getting_Started.Camera.camera import Camera, Camera_Movement
+from vispy.gloo import gl
 from math import sin
 
-#python wrapper of glm
-#https://pypi.org/project/PyGLM/
+# python wrapper of glm
+# https://pypi.org/project/PyGLM/
 import glm
 
 vertex = """
@@ -32,37 +33,52 @@ void main (void)
 """
 fragment = """
 
-uniform vec3 lightPos;
-uniform vec3 objectColor;
-uniform vec3 lightColor;
-uniform vec3 viewPos;
+struct Material {
+    sampler2D diffuse;
+    vec3 specular;    
+    float shininess;
+}; 
 
+struct Light{
+    vec3 position;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+
+uniform Material material;
+uniform Light light;
+uniform vec2 TexCoords;
+
+uniform vec3 viewPos;
 varying vec3 FragPos;
 varying vec3 Normal;
 
+
 void main()
 {
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * lightColor;
-    
+    // ambient
+    vec3 ambient = light.ambient * texture(material.diffuse, TexCoords).rgb;
+  	
+    // diffuse 
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(lightPos - FragPos);
+    vec3 lightDir = normalize(light.position - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * lightColor;
+    vec3 diffuse = light.diffuse * diff * texture(material.diffuse, TexCoords).rgb;  
     
-    float specularStrength = 0.5;
+    // specular
     vec3 viewDir = normalize(viewPos - FragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
-    
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 256);
-    vec3 specular = specularStrength * spec * lightColor;
-    
-    vec3 result = (ambient + diffuse + specular) * objectColor;
-    gl_FragColor = vec4(result, 1.0);
-}
+    vec3 reflectDir = reflect(-lightDir, norm);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    vec3 specular = light.specular * (spec * material.specular);  
+        
+    vec3 result = ambient + diffuse + specular;
+    FragColor = vec4(result, 1.0);
+} 
 """
 
-lightSourceVertex =  """
+lightSourceVertex = """
 
 attribute vec3 a_position;
 
@@ -92,61 +108,63 @@ class Canvas(app.Canvas):
 
         # vispy wrapper of glfw dont have the wrapper of this function yet, I am opening a PR for this
         # by the time we can use this
-        self._app.native.glfwSetInputMode(self.native._id, self._app.native.GLFW_CURSOR, self._app.native.GLFW_CURSOR_DISABLED)
+        self._app.native.glfwSetInputMode(self.native._id, self._app.native.GLFW_CURSOR,
+                                          self._app.native.GLFW_CURSOR_DISABLED)
 
         builtins.width, builtins.height = size
 
-        #camera instance
+        # camera instance
         self.camera = Camera(position=glm.vec3(0, 0, 3), sensitivity=0.2)
 
         self.startTime = time()
         self.first_mouse = True
         self.lightPos = [0, 0, 0]
+        self.lightColor = glm.vec3(1)
 
         self.program = gloo.Program(vertex, fragment)
         self.programLightSource = gloo.Program(lightSourceVertex, lightSourceFragment)
 
         self.vertices = np.array([[-0.5, -0.5, -0.5],
                                   [0.5, -0.5, -0.5],
-                                  [0.5,  0.5, -0.5],
-                                  [0.5,  0.5, -0.5],
-                                  [-0.5,  0.5, -0.5],
+                                  [0.5, 0.5, -0.5],
+                                  [0.5, 0.5, -0.5],
+                                  [-0.5, 0.5, -0.5],
                                   [-0.5, -0.5, -0.5],
 
-                                  [-0.5, -0.5,  0.5],
-                                  [0.5, -0.5,  0.5],
-                                  [0.5,  0.5,  0.5],
-                                  [0.5,  0.5,  0.5],
-                                  [-0.5,  0.5,  0.5],
-                                  [-0.5, -0.5,  0.5],
+                                  [-0.5, -0.5, 0.5],
+                                  [0.5, -0.5, 0.5],
+                                  [0.5, 0.5, 0.5],
+                                  [0.5, 0.5, 0.5],
+                                  [-0.5, 0.5, 0.5],
+                                  [-0.5, -0.5, 0.5],
 
-                                  [-0.5,  0.5,  0.5],
-                                  [-0.5,  0.5, -0.5],
+                                  [-0.5, 0.5, 0.5],
+                                  [-0.5, 0.5, -0.5],
                                   [-0.5, -0.5, -0.5],
                                   [-0.5, -0.5, -0.5],
-                                  [-0.5, -0.5,  0.5],
-                                  [-0.5,  0.5,  0.5],
+                                  [-0.5, -0.5, 0.5],
+                                  [-0.5, 0.5, 0.5],
 
-                                  [0.5,  0.5,  0.5],
-                                  [0.5,  0.5, -0.5],
+                                  [0.5, 0.5, 0.5],
+                                  [0.5, 0.5, -0.5],
                                   [0.5, -0.5, -0.5],
                                   [0.5, -0.5, -0.5],
-                                  [0.5, -0.5,  0.5],
-                                  [0.5,  0.5,  0.5],
+                                  [0.5, -0.5, 0.5],
+                                  [0.5, 0.5, 0.5],
 
                                   [-0.5, -0.5, -0.5],
                                   [0.5, -0.5, -0.5],
-                                  [0.5, -0.5,  0.5],
-                                  [0.5, -0.5,  0.5],
-                                  [-0.5, -0.5,  0.5],
+                                  [0.5, -0.5, 0.5],
+                                  [0.5, -0.5, 0.5],
+                                  [-0.5, -0.5, 0.5],
                                   [-0.5, -0.5, -0.5],
 
-                                  [-0.5,  0.5, -0.5],
-                                  [0.5,  0.5, -0.5],
-                                  [0.5,  0.5,  0.5],
-                                  [0.5,  0.5,  0.5],
-                                  [-0.5,  0.5,  0.5],
-                                  [-0.5,  0.5, -0.5]
+                                  [-0.5, 0.5, -0.5],
+                                  [0.5, 0.5, -0.5],
+                                  [0.5, 0.5, 0.5],
+                                  [0.5, 0.5, 0.5],
+                                  [-0.5, 0.5, 0.5],
+                                  [-0.5, 0.5, -0.5]
                                   ]).astype(np.float32)
         self.aNormal = np.array([
             [0, 0, -1],
@@ -187,7 +205,7 @@ class Canvas(app.Canvas):
             [0, 1, 0],
         ]).astype(np.float32)
 
-        """self.texCoord = np.array([[0.0, 0.0],
+        self.texCoord = np.array([[0.0, 0.0],
                                   [1.0, 0.0],
                                   [1.0, 1.0],
                                   [1.0, 1.0],
@@ -228,17 +246,17 @@ class Canvas(app.Canvas):
                                   [1.0, 0.0],
                                   [0.0, 0.0],
                                   [0.0, 1.0]
-                                  ]).astype(np.float32)"""
+                                  ]).astype(np.float32)
 
         self.model = None
         self.projection = None
         self.view = None
 
-        #delta time
+        # delta time
         self.delta_time = 0
         self.last_frame = 0
 
-        #mouse variables
+        # mouse variables
         self.last_x = None
         self.last_y = None
 
@@ -249,10 +267,10 @@ class Canvas(app.Canvas):
 
     def on_draw(self, event):
 
-        #Read about depth testing and changing stated in vispy here http://vispy.org/gloo.html?highlight=set_state
+        # Read about depth testing and changing stated in vispy here http://vispy.org/gloo.html?highlight=set_state
         gloo.clear(color=[0, 0, 0, 1.0], depth=True)
 
-        #delta_time
+        # delta_time
         self.current_frame = time()
         self.delta_time = self.current_frame - self.last_frame
         self.last_frame = self.current_frame
@@ -267,7 +285,7 @@ class Canvas(app.Canvas):
             self.camera.ProcessKeyboard(Camera_Movement.RIGHT, self.delta_time)
 
         self.view = self.camera.GetViewMatrix()
-        self.projection = glm.perspective(glm.radians(self.camera.Zoom), builtins.width/builtins.height, 0.1, 100.0)
+        self.projection = glm.perspective(glm.radians(self.camera.Zoom), builtins.width / builtins.height, 0.1, 100.0)
 
         # vispy takes numpy array in m * n matrix form
         self.view = (np.array(self.view.to_list()).astype(np.float32))
@@ -282,7 +300,7 @@ class Canvas(app.Canvas):
         self.model = (np.array(self.model.to_list()).astype(np.float32))
         self.model = self.model.reshape((1, self.model.shape[0] * self.model.shape[1]))
 
-        #drawing light source
+        # drawing light source
         self.programLightSource['model'] = self.model
         self.programLightSource['view'] = self.view
         self.programLightSource['projection'] = self.projection
@@ -296,24 +314,21 @@ class Canvas(app.Canvas):
         self.program['a_position'] = self.vertices * 5
         self.program['aNormal'] = self.aNormal
         self.program['viewPos'] = self.camera.Position
-        self.program['lightPos'] = self.lightPos
-        self.program['objectColor'] = [1, 0.5, 0.31]
-        self.program['lightColor'] = [1, 1, 1]
+        self.program['TexCoords'] = self.texCoord
 
         self.model = glm.mat4(1.0)
         # rotate the cube if you want
-        #self.model = glm.rotate(self.model, glm.radians((time() - self.startTime) * 10), glm.vec3(0,1.5,1))
-        self.model = glm.translate(self.model, glm.vec3(0,-5,0))
+        # self.model = glm.rotate(self.model, glm.radians((time() - self.startTime) * 10), glm.vec3(0,1.5,1))
+        self.model = glm.translate(self.model, glm.vec3(0, -5, 0))
         self.model = (np.array(self.model.to_list()).astype(np.float32))
         self.model = self.model.reshape((1, self.model.shape[0] * self.model.shape[1]))
 
         self.program['model'] = self.model
         self.program.draw('triangles')
 
-
         self.update()
 
-    def on_key_press(self,event):
+    def on_key_press(self, event):
         if event.key == 'W':
             self.camera.bool_w = True
         if event.key == 'S':
@@ -357,10 +372,25 @@ class Canvas(app.Canvas):
         gloo.set_viewport(0, 0, *event.size)
 
     def on_timer(self, event):
-        pass
+        id = None
+        if (gl.glGetUniformLocation(self.program.id, "material.ambient")) != -1:
+            id = self.program.id
+        if (gl.glGetUniformLocation(self.programLightSource.id, "material.ambient")) != -1:
+            id = self.programLightSource.id
+
+        gl.glUniform3f(gl.glGetUniformLocation(id, "material.ambient"), 1, 0.5, 0.31)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "material.diffuse"), 1, 0.5, 0.31)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "material.specular"), 0.5, 0.5, 0.5)
+        gl.glUniform1f(gl.glGetUniformLocation(id, "material.shininess"), 32)
+
+        gl.glUniform3f(gl.glGetUniformLocation(id, "light.ambient"), 1, 1, 1)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "light.diffuse"), 1, 1, 1)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "light.position"), 0, 0, 0)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "light.specular"), 1.0, 1.0, 1.0)
 
 
 if __name__ == '__main__':
-    c = Canvas((800,600))
+    c = Canvas((800, 600))
     app.run()
+
 

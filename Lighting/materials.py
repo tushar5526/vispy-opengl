@@ -5,7 +5,8 @@ import numpy as np
 from vispy import app, gloo
 from time import time
 from Getting_Started.Camera.camera import Camera, Camera_Movement
-from math import sin, cos
+from vispy.gloo import gl
+from math import sin
 
 # python wrapper of glm
 # https://pypi.org/project/PyGLM/
@@ -39,33 +40,42 @@ struct Material{
     float shininess;
 };
 
-uniform vec3 a;
-uniform vec3 lightPos;
-uniform vec3 objectColor;
-uniform vec3 lightColor;
-uniform vec3 viewPos;
+struct Light{
+    vec3 position;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+
 uniform Material material;
+uniform Light light;
+
+uniform vec3 viewPos;
 varying vec3 FragPos;
 varying vec3 Normal;
 
+
 void main()
-{   
-    vec3 ambient = material.ambient * lightColor;
-
+{
+    // ambient
+    vec3 ambient = light.ambient * material.ambient;
+  	
+    // diffuse 
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(lightPos - FragPos);
+    vec3 lightDir = normalize(light.position - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = material.diffuse * lightColor;
-
+    vec3 diffuse = light.diffuse * (diff * material.diffuse);
+    
+    // specular
     vec3 viewDir = normalize(viewPos - FragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
-
+    vec3 reflectDir = reflect(-lightDir, norm);  
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    vec3 specular = material.specular * spec * lightColor;
-
-    vec3 result = (ambient + diffuse + specular) * objectColor;
+    vec3 specular = light.specular * (spec * material.specular);  
+        
+    vec3 result = ambient + diffuse + specular;
     gl_FragColor = vec4(result, 1.0);
-}
+} 
 """
 
 lightSourceVertex = """
@@ -109,6 +119,7 @@ class Canvas(app.Canvas):
         self.startTime = time()
         self.first_mouse = True
         self.lightPos = [0, 0, 0]
+        self.lightColor = glm.vec3(1)
 
         self.program = gloo.Program(vertex, fragment)
         self.programLightSource = gloo.Program(lightSourceVertex, lightSourceFragment)
@@ -286,7 +297,6 @@ class Canvas(app.Canvas):
 
         self.model = glm.mat4(1.0)
         self.model = glm.translate(self.model, self.lightPos)
-        # self.model = glm.translate(self.model, self.lightPos)
         self.model = (np.array(self.model.to_list()).astype(np.float32))
         self.model = self.model.reshape((1, self.model.shape[0] * self.model.shape[1]))
 
@@ -297,20 +307,18 @@ class Canvas(app.Canvas):
         self.programLightSource['a_position'] = self.vertices
 
         self.programLightSource.draw('triangles')
+
+        #update light Colors
+        self.lightColor.x = sin(time() - self.startTime * 2)
+        self.lightColor.y = sin(time() - self.startTime * 0.7)
+        self.lightColor.z = sin(time() - self.startTime * 1.3)
+
         # drawing normal cube
-        self.program['material.diffuse'] = [1, 0.5, 0.31]
-        self.program['material.ambient'] = [1, 0.5, 0.31]
-        self.program['material.specular'] = [0.5, 0.5, 0.5]
-        self.program['material.shininess'] = 32
         self.program['view'] = self.view
         self.program['projection'] = self.projection
         self.program['a_position'] = self.vertices * 5
         self.program['aNormal'] = self.aNormal
         self.program['viewPos'] = self.camera.Position
-        self.program['lightPos'] = self.lightPos
-        self.program['objectColor'] = [1, 0.5, 0.31]
-        self.program['lightColor'] = [1, 1, 1]
-
 
         self.model = glm.mat4(1.0)
         # rotate the cube if you want
@@ -368,9 +376,26 @@ class Canvas(app.Canvas):
         gloo.set_viewport(0, 0, *event.size)
 
     def on_timer(self, event):
-        pass
+        id = None
+        if (gl.glGetUniformLocation(self.program.id, "material.ambient")) != -1:
+            id = self.program.id
+        if (gl.glGetUniformLocation(self.programLightSource.id, "material.ambient")) != -1:
+            id = self.programLightSource.id
 
+        gl.glUniform3f(gl.glGetUniformLocation(id, "material.ambient"), 1, 0.5, 0.31)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "material.diffuse"), 1, 0.5, 0.31)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "material.specular"), 0.5, 0.5, 0.5)
+        gl.glUniform1f(gl.glGetUniformLocation(id, "material.shininess"), 32)
+        diffuseColor = self.lightColor * glm.vec3(0.5)
+        ambientColor = diffuseColor * glm.vec3(0.2)
+
+        gl.glUniform3f(gl.glGetUniformLocation(id, "light.ambient"), ambientColor.x, ambientColor.y, ambientColor.z)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "light.diffuse"), diffuseColor.x, diffuseColor.y, diffuseColor.z)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "light.position"), 0, 0, 0)
+        gl.glUniform3f(gl.glGetUniformLocation(id, "light.specular"), 1.0, 1.0, 1.0)
 
 if __name__ == '__main__':
     c = Canvas((800, 600))
     app.run()
+
+
