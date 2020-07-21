@@ -57,7 +57,7 @@ class Canvas(app.Canvas):
         #                         interpolation='linear',
         #                         wrapping='repeat')
 
-        self.texture = Texture2D(data=io.imread('smiley.jpg'),
+        self.texture = Texture2D(data=io.imread('../Assets/smiley.jpg'),
                                  interpolation='nearest',
                                  wrapping='repeat')
 

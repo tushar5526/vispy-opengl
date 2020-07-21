@@ -50,9 +50,9 @@ class Canvas(app.Canvas):
         self.texCoord = [(1, 1), (1, 0), (0, 0), (0, 1)]
 
         #flip vertically is not there in vispy yet, we can use np.flip
-        self.texture1 = Texture2D(data=np.flip(io.imread('container.jpg'), 0))
+        self.texture1 = Texture2D(data=np.flip(io.imread('../Assets/container.jpg'), 0))
 
-        self.texture2 = Texture2D(data=np.flip(io.imread('smiley.jpg'), 0))
+        self.texture2 = Texture2D(data=np.flip(io.imread('../Assets/smiley.jpg'), 0))
 
         self.program['a_position'] = self.vertices
         self.program['aTexCoord'] = self.texCoord

@@ -54,7 +54,7 @@ class Canvas(app.Canvas):
 
         self.program['a_position'] = self.vertices
         self.program['aTexCoord'] = self.texCoord
-        self.program['ourTexture'] = io.imread('wall.jpg')
+        self.program['ourTexture'] = io.imread('../Assets/wall.jpg')
         self.timer = app.Timer('auto', self.on_timer, start=True)
         self.show()
 

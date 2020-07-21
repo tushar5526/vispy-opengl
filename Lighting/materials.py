@@ -7,6 +7,7 @@ from time import time
 from Getting_Started.Camera.camera import Camera, Camera_Movement
 from vispy.gloo import gl
 from math import sin
+import ctypes
 
 # python wrapper of glm
 # https://pypi.org/project/PyGLM/
@@ -33,25 +34,18 @@ void main (void)
 """
 fragment = """
 
-struct Material{
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    float shininess;
-};
+uniform vec3 m_ambient[1];
+uniform vec3 m_diffuse[1];
+uniform vec3 m_specular[1];
+uniform float m_shininess[1];
 
-struct Light{
-    vec3 position;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
-
-
-uniform Material material;
-uniform Light light;
+uniform vec3 l_position[1];
+uniform vec3 l_ambient[1];
+uniform vec3 l_diffuse[1];
+uniform vec3 l_specular[1];
 
 uniform vec3 viewPos;
+
 varying vec3 FragPos;
 varying vec3 Normal;
 
@@ -59,19 +53,19 @@ varying vec3 Normal;
 void main()
 {
     // ambient
-    vec3 ambient = light.ambient * material.ambient;
+    vec3 ambient = l_ambient[0] * m_ambient[0];
   	
     // diffuse 
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(light.position - FragPos);
+    vec3 lightDir = normalize(l_position[0] - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * (diff * material.diffuse);
+    vec3 diffuse = l_diffuse[0] * (diff * m_diffuse[0]);
     
     // specular
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);  
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    vec3 specular = light.specular * (spec * material.specular);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), m_shininess[0]);
+    vec3 specular = l_specular[0] * (spec * m_specular[0]);  
         
     vec3 result = ambient + diffuse + specular;
     gl_FragColor = vec4(result, 1.0);
@@ -308,10 +302,6 @@ class Canvas(app.Canvas):
 
         self.programLightSource.draw('triangles')
 
-        #update light Colors
-        self.lightColor.x = sin(time() - self.startTime * 2)
-        self.lightColor.y = sin(time() - self.startTime * 0.7)
-        self.lightColor.z = sin(time() - self.startTime * 1.3)
 
         # drawing normal cube
         self.program['view'] = self.view
@@ -319,6 +309,14 @@ class Canvas(app.Canvas):
         self.program['a_position'] = self.vertices * 5
         self.program['aNormal'] = self.aNormal
         self.program['viewPos'] = self.camera.Position
+        self.program['l_ambient[0]'] = [0.2, 0.2, 0.2]
+        self.program['l_diffuse[0]'] = [1, 1, 0.5]
+        self.program['l_specular[0]'] = [1.0, 1.0, 1.0]
+        self.program['l_position[0]'] = self.lightPos
+        self.program['m_ambient[0]'] = [1.0, 0.5, 0.31]
+        self.program['m_diffuse[0]'] = [1.0, 0.5, 0.31]
+        self.program['m_shininess[0]'] = 32
+        self.program['m_specular[0]'] = [0.5, 0.5, 0.5]
 
         self.model = glm.mat4(1.0)
         # rotate the cube if you want
@@ -376,23 +374,7 @@ class Canvas(app.Canvas):
         gloo.set_viewport(0, 0, *event.size)
 
     def on_timer(self, event):
-        id = None
-        if (gl.glGetUniformLocation(self.program.id, "material.ambient")) != -1:
-            id = self.program.id
-        if (gl.glGetUniformLocation(self.programLightSource.id, "material.ambient")) != -1:
-            id = self.programLightSource.id
-
-        gl.glUniform3f(gl.glGetUniformLocation(id, "material.ambient"), 1, 0.5, 0.31)
-        gl.glUniform3f(gl.glGetUniformLocation(id, "material.diffuse"), 1, 0.5, 0.31)
-        gl.glUniform3f(gl.glGetUniformLocation(id, "material.specular"), 0.5, 0.5, 0.5)
-        gl.glUniform1f(gl.glGetUniformLocation(id, "material.shininess"), 32)
-        diffuseColor = self.lightColor * glm.vec3(0.5)
-        ambientColor = diffuseColor * glm.vec3(0.2)
-
-        gl.glUniform3f(gl.glGetUniformLocation(id, "light.ambient"), ambientColor.x, ambientColor.y, ambientColor.z)
-        gl.glUniform3f(gl.glGetUniformLocation(id, "light.diffuse"), diffuseColor.x, diffuseColor.y, diffuseColor.z)
-        gl.glUniform3f(gl.glGetUniformLocation(id, "light.position"), 0, 0, 0)
-        gl.glUniform3f(gl.glGetUniformLocation(id, "light.specular"), 1.0, 1.0, 1.0)
+        pass
 
 if __name__ == '__main__':
     c = Canvas((800, 600))

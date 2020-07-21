@@ -158,8 +158,8 @@ class Canvas(app.Canvas):
                                   [0.0, 1.0]
                                   ]).astype(np.float32)
 
-        self.texture1 = Texture2D(data=io.imread('../Textures/container.jpg', flipVertically=True))
-        self.texture2 = Texture2D(data=io.imread('../Textures/smiley.jpg', flipVertically=True))
+        self.texture1 = Texture2D(data=io.imread('../Assets/container.jpg', flipVertically=True))
+        self.texture2 = Texture2D(data=io.imread('../Assets/smiley.jpg', flipVertically=True))
 
         #get the camera
         self.camera = Camera(position=glm.vec3(0, 0, 3), sensitivity=0.2)

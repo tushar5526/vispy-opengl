@@ -50,7 +50,7 @@ class Canvas(app.Canvas):
 
         self.indices = gloo.IndexBuffer([0, 1, 3, 1, 2, 3])
         self.texCoord = [(1, 1), (1, 0), (0, 0), (0, 1)]
-        self.texture = Texture2D(data=io.imread('container.jpg'),
+        self.texture = Texture2D(data=io.imread('../Assets/container.jpg'),
                                  interpolation='nearest',
                                  wrapping='repeat')
 

@@ -52,9 +52,9 @@ class Canvas(app.Canvas):
         self.indices = gloo.IndexBuffer([0, 1, 3, 1, 2, 3])
         self.texCoord = [(1, 1), (1, 0), (0, 0), (0, 1)]
 
-        self.texture1 = Texture2D(data=io.imread('container.jpg', flipVertically=True))
+        self.texture1 = Texture2D(data=io.imread('../Assets/container.jpg', flipVertically=True))
 
-        self.texture2 = Texture2D(data=io.imread('smiley.jpg', flipVertically=True))
+        self.texture2 = Texture2D(data=io.imread('../Assets/smiley.jpg', flipVertically=True))
         self.percent = 0.0;
 
         self.program['a_position'] = self.vertices
