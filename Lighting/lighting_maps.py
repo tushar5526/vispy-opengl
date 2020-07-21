@@ -2,7 +2,7 @@
 
 import builtins
 import numpy as np
-from vispy import app, gloo
+from vispy import app, gloo, io
 from time import time
 from Getting_Started.Camera.camera import Camera, Camera_Movement
 
@@ -11,12 +11,13 @@ from Getting_Started.Camera.camera import Camera, Camera_Movement
 import glm
 
 vertex = """
-
 attribute vec3 a_position;
 attribute vec3 aNormal;
+attribute vec2 texCoords;
 
 varying vec3 Normal;
 varying vec3 FragPos;
+varying vec2 TexCoords;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -26,14 +27,16 @@ void main (void)
 {
     gl_Position = projection * view * model * vec4(a_position, 1.0);
     Normal = aNormal;
+    TexCoords = texCoords;
     FragPos = vec3(model * vec4(a_position, 1.0));
 }
 """
 fragment = """
 
-uniform vec3 m_ambient[1];
-uniform vec3 m_diffuse[1];
-uniform vec3 m_specular[1];
+uniform sampler2D m_diffuse[1];
+uniform sampler2D m_specular[1];
+uniform sampler2D m_emission[1];
+
 uniform float m_shininess[1];
 
 uniform vec3 l_position[1];
@@ -45,26 +48,28 @@ uniform vec3 viewPos;
 
 varying vec3 FragPos;
 varying vec3 Normal;
+varying vec2 TexCoords;
 
 
 void main()
 {
     // ambient
-    vec3 ambient = l_ambient[0] * m_ambient[0];
-  	
+
     // diffuse 
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(l_position[0] - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = l_diffuse[0] * (diff * m_diffuse[0]);
-    
+    vec3 diffuse = l_diffuse[0] * diff * vec3(texture2D(m_diffuse[0], TexCoords));
+    vec3 ambient = l_ambient[0] * vec3(texture2D(m_diffuse[0], TexCoords));
+
     // specular
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);  
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), m_shininess[0]);
-    vec3 specular = l_specular[0] * (spec * m_specular[0]);  
-        
-    vec3 result = ambient + diffuse + specular;
+    vec3 specular = l_specular[0] * spec * vec3(texture2D(m_specular[0], TexCoords));  
+    
+    vec3 emission = texture2D(m_emission[0], TexCoords).rgb;
+    vec3 result = ambient + diffuse + specular + emission;
     gl_FragColor = vec4(result, 1.0);
 } 
 """
@@ -196,7 +201,7 @@ class Canvas(app.Canvas):
             [0, 1, 0],
         ]).astype(np.float32)
 
-        """self.texCoord = np.array([[0.0, 0.0],
+        self.texCoord = np.array([[0.0, 0.0],
                                   [1.0, 0.0],
                                   [1.0, 1.0],
                                   [1.0, 1.0],
@@ -237,7 +242,13 @@ class Canvas(app.Canvas):
                                   [1.0, 0.0],
                                   [0.0, 0.0],
                                   [0.0, 1.0]
-                                  ]).astype(np.float32)"""
+                                  ]).astype(np.float32)
+
+        self.diffuse_map = gloo.Texture2D(data=np.flip(io.imread('Assets/container2.png'), 0))
+        self.specular_map = gloo.Texture2D(data=np.flip(io.imread('Assets/container2_specular.png'), 0))
+
+        #Exercises
+        self.emission_map = gloo.Texture2D(data=np.flip(io.imread('Assets/matrix.jpg'), 0))
 
         self.model = None
         self.projection = None
@@ -299,21 +310,22 @@ class Canvas(app.Canvas):
 
         self.programLightSource.draw('triangles')
 
-
         # drawing normal cube
         self.program['view'] = self.view
         self.program['projection'] = self.projection
         self.program['a_position'] = self.vertices * 5
         self.program['aNormal'] = self.aNormal
         self.program['viewPos'] = self.camera.Position
+        self.program['texCoords'] = self.texCoord
+
         self.program['l_ambient[0]'] = [0.2, 0.2, 0.2]
         self.program['l_diffuse[0]'] = [1, 1, 0.5]
         self.program['l_specular[0]'] = [1.0, 1.0, 1.0]
         self.program['l_position[0]'] = self.lightPos
-        self.program['m_ambient[0]'] = [1.0, 0.5, 0.31]
-        self.program['m_diffuse[0]'] = [1.0, 0.5, 0.31]
+        self.program['m_diffuse[0]'] = self.diffuse_map
         self.program['m_shininess[0]'] = 32
-        self.program['m_specular[0]'] = [0.5, 0.5, 0.5]
+        self.program['m_specular[0]'] = self.specular_map
+        self.program['m_emission[0]'] = self.emission_map
 
         self.model = glm.mat4(1.0)
         # rotate the cube if you want
@@ -372,6 +384,7 @@ class Canvas(app.Canvas):
 
     def on_timer(self, event):
         pass
+
 
 if __name__ == '__main__':
     c = Canvas((800, 600))
