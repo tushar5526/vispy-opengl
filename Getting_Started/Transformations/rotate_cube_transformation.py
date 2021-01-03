@@ -70,6 +70,8 @@ class Canvas(app.Canvas):
         self.program['texture1'] = self.texture1
         self.program['texture2'] = self.texture2
 
+
+
         self.timer = app.Timer('auto', self.on_timer, start=True)
         self.show()
 
