@@ -1,6 +1,6 @@
 freetype-py==2.1.0.post1
 glfw==1.11.0
-numpy==1.18.4
+numpy==1.22.0
 Pillow==7.1.2
 PyGLM==1.99.0
 triangle==20200424
